@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WORD PUZZLE</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700;800;900&family=Noto+Sans+JP:wght@400;500;700;900&display=swap');
+        
+        body {
+            font-family: 'JetBrains Mono', 'Noto Sans JP', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+
+        .toast-flash {
+            animation: fadeInOut 2s ease-in-out forwards;
+        }
+
+        @keyframes fadeInOut {
+            0% { opacity: 0; transform: translateY(-8px); }
+            15% { opacity: 1; transform: translateY(0); }
+            85% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-8px); }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between bg-slate-950 text-slate-100">
+
+    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-30 px-4 py-3 sm:px-6 flex items-center justify-between shadow-md">
+        <div class="flex items-center space-x-4">
+            <h1 class="text-xl sm:text-2xl font-black tracking-widest text-amber-400">WORD PUZZLE</h1>
+            <div id="digital-clock" class="text-sm sm:text-base font-black text-slate-300 font-mono tracking-widest bg-slate-950 px-3 py-1 rounded border border-slate-800 shadow-inner">
+                00:00:00
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <div id="save-toast" class="hidden px-2.5 py-1 rounded bg-emerald-600 text-white text-[11px] font-bold shadow toast-flash flex items-center gap-1">
+                <i class="fa-solid fa-check"></i> 保存完了
+            </div>
+
+            <!-- Admin Mode Toggle Button -->
+            <button id="btn-admin-toggle" class="p-2 rounded text-xs font-bold transition flex items-center justify-center border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 shadow-sm" title="管理者モード">
+                <i class="fa-solid fa-lock text-sm"></i>
+            </button>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-6">
+
+        <!-- Admin Only Time Controls -->
+        <section id="admin-time-panel" class="hidden bg-slate-900 border border-amber-500/30 rounded-xl p-4 shadow-lg space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                <span class="text-xs font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <i class="fa-solid fa-sliders"></i> 時刻調整 (管理者権限)
+                </span>
+                <div class="flex items-center gap-2">
+                    <button id="btn-live" class="px-3 py-1 rounded text-xs font-bold flex items-center gap-1.5 transition border border-rose-500 bg-rose-950/40 text-rose-400 hover:bg-rose-900/50">
+                        <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                        LIVE
+                    </button>
+                    <button id="btn-zero-sec" class="px-3 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition border border-slate-700 shadow">
+                        12:00:00 リセット
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div class="space-y-1 bg-slate-950 p-2.5 rounded border border-slate-800">
+                    <div class="flex justify-between text-slate-400">
+                        <span class="font-bold">時</span>
+                        <span id="val-hour" class="font-bold text-amber-400 font-mono">12</span>
+                    </div>
+                    <input type="range" id="slider-hour" min="0" max="23" value="12" class="w-full accent-amber-400 cursor-pointer">
+                </div>
+
+                <div class="space-y-1 bg-slate-950 p-2.5 rounded border border-slate-800">
+                    <div class="flex justify-between text-slate-400">
+                        <span class="font-bold">分</span>
+                        <span id="val-min" class="font-bold text-amber-400 font-mono">00</span>
+                    </div>
+                    <input type="range" id="slider-min" min="0" max="59" value="0" class="w-full accent-amber-400 cursor-pointer">
+                </div>
+
+                <div class="space-y-1 bg-slate-950 p-2.5 rounded border border-slate-800">
+                    <div class="flex justify-between text-slate-400">
+                        <span class="font-bold">秒</span>
+                        <span id="val-sec" class="font-bold text-amber-400 font-mono">00</span>
+                    </div>
+                    <input type="range" id="slider-sec" min="0" max="59" value="0" class="w-full accent-amber-400 cursor-pointer">
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-md space-y-3">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">位置を選択 (1〜12)</span>
+                <span id="selection-counter" class="text-xs font-bold text-amber-400 bg-slate-950 px-2.5 py-0.5 rounded-full border border-slate-800">0 / 3</span>
+            </div>
+
+            <div class="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-2" id="track-buttons-container">
+                <!-- 1..12 numerical buttons populated by JS -->
+            </div>
+        </section>
+
+        <section class="space-y-3">
+            <div id="hint-cards-container" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Cards showing ONLY position number + hint text or ??? -->
+            </div>
+        </section>
+
+        <section class="bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-lg space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                <span class="text-xs font-bold text-slate-400 uppercase tracking-wider">最終回答</span>
+            </div>
+
+            <div class="space-y-3">
+                <div class="flex gap-2">
+                    <input type="text" id="final-answer-input" class="flex-1 px-4 py-2.5 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-400 shadow-inner font-bold" placeholder="回答を入力...">
+                    <button id="btn-submit-answer" class="px-5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black rounded-lg text-sm transition shadow flex items-center gap-1.5">
+                        判定
+                    </button>
+                </div>
+                <p id="answer-error-msg" class="text-xs text-rose-400 font-bold hidden">回答が違います。</p>
+            </div>
+
+            <!-- Clear State Overlay Screen -->
+            <div id="clear-screen" class="hidden p-6 bg-amber-500/10 border border-amber-500/40 rounded-lg text-center space-y-4">
+                <div class="text-3xl font-black text-amber-400 tracking-widest animate-pulse">
+                    ✨ CLEAR!! ✨
+                </div>
+                <p class="text-xs text-slate-300 font-medium">おめでとうございます！正解にたどり着きました！</p>
+                <div class="pt-2">
+                    <a id="btn-share-x" href="#" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-2 px-5 py-2.5 bg-slate-100 hover:bg-white text-slate-950 font-bold rounded-lg text-xs transition shadow-md">
+                        <i class="fa-brands fa-x-twitter text-sm"></i> X (旧Twitter) でクリアをシェア
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <section id="admin-dict-panel" class="hidden bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-md space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-2">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-book text-amber-400 text-xs"></i>
+                    <h2 class="text-xs font-bold text-slate-200">ヒント辞書エディタ (全48項目)</h2>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button id="btn-save-manual" class="px-2.5 py-1 rounded text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center gap-1 shadow">
+                        <i class="fa-solid fa-floppy-disk text-[10px]"></i> 保存
+                    </button>
+                    <button id="btn-export-json" class="py-1 px-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded font-bold text-slate-300 text-xs flex items-center gap-1 transition shadow">
+                        <i class="fa-solid fa-file-export text-[10px]"></i> JSON出力
+                    </button>
+                    <button id="btn-import-json" class="py-1 px-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded font-bold text-slate-300 text-xs flex items-center gap-1 transition shadow">
+                        <i class="fa-solid fa-file-import text-[10px]"></i> JSON復元
+                    </button>
+                </div>
+            </div>
+
+            <!-- Dictionary List Container -->
+            <div id="dictionary-list-container" class="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                <!-- Populated dynamically -->
+            </div>
+        </section>
+
+    </main>
+
+    <div id="password-modal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+        <div class="bg-slate-900 rounded-xl max-w-sm w-full p-5 shadow-2xl space-y-4 border border-slate-800">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                <h3 class="text-xs font-bold text-slate-200 uppercase">管理者認証</h3>
+                <button id="btn-close-modal" class="text-slate-500 hover:text-slate-300 text-sm"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="space-y-2">
+                <label for="admin-pass-input" class="text-xs font-medium text-slate-400">パスワードを入力:</label>
+                <input type="password" id="admin-pass-input" class="w-full px-3 py-2 bg-slate-950 border border-slate-700 rounded-lg text-sm text-slate-100 focus:outline-none focus:border-amber-400 shadow-inner" placeholder="••••••••">
+                <p id="modal-error-msg" class="text-xs text-rose-400 font-bold hidden">パスワードが正しくありません。</p>
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+                <button id="btn-cancel-modal" class="px-3 py-1.5 rounded text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-300">キャンセル</button>
+                <button id="btn-submit-modal" class="px-4 py-1.5 rounded text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 shadow">認証</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const ADMIN_PASSWORD = "アザミノハナモヒトサカリ";
+        const CLEAR_PASSWORDS = ["アザミノハナモヒトサカリ", "あざみのはなもひとさかり"];
+        const STORAGE_KEY_HINTS = 'word_puzzle_hints_v1';
+        const DB_NAME = 'WordPuzzleDB_v1';
+        const DB_STORE = 'puzzleData';
+
+        let isAdmin = false;
+
+        // Background tracks (1~12 o'clock, 4 chars outer->inner)
+        // Index 0 = 12時, Index 1 = 1時 ... Index 11 = 11時
+        const DEFAULT_GRID_WORDS = [
+            ["リ", "キ", "セ", "ツ"], // 12時
+            ["ア", "オ", "タ", "ケ"], // 1時
+            ["ザ", "ツ", "キ", "ヨ"], // 2時
+            ["ミ", "ン", "シ", "ユ"], // 3時
+            ["ノ", "ウ", "ミ", "ソ"], // 4時
+            ["ハ", "ン", "メ", "イ"], // 5時
+            ["ナ", "ン", "ベ", "イ"], // 6時
+            ["モ", "ン", "ゼ", "ツ"], // 7時
+            ["ヒ", "カ", "カ", "ク"], // 8時
+            ["ト", "ク", "テ", "イ"], // 9時
+            ["サ", "ン", "ザ", "ル"], // 10時
+            ["カ", "ン", "セ", "ツ"]  // 11時
+        ];
+
+        // Hand Texts
+        const handSecText = "ウコン"; // 3 chars
+        const handMinText = "クガ";   // 2 chars
+        const handHourText = "ン";    // 1 char
+
+        // Complete 48 Default Hints
+        const DEFAULT_HINT_DICTIONARY = {
+            // 1時
+            "アオタケ": "踏む",
+            "アンコウ": "提灯",
+            "アオガク": "群の3(2)番目に属する",
+            "アオタン": "5点",
+            // 2時
+            "ザツキヨ": "ビル",
+            "ザンコウ": "夕映え",
+            "ザツガク": "例えば、バランやランチャーム",
+            "ザツキン": "入り込むとまずい",
+            // 3時
+            "ミンシユ": "主義",
+            "ミンコウ": "【下品】なのがっじょうほう",
+            "ミンガク": "廟堂の一種",
+            "ミンシン": "リベラル政党",
+            // 4時
+            "ノウミソ": "足りない",
+            "ノンコウ": "道入",
+            "ノウガク": "伝統芸",
+            "ノウミン": "第一次産業をする",
+            // 5時
+            "ハンメイ": "分かる",
+            "ハンコウ": "期",
+            "ハンガク": "5割引",
+            "ハンメン": "教師の一種",
+            // 6時
+            "ナンベイ": "ちり",
+            "ナンコウ": "塗る",
+            "ナンガク": "高知発祥",
+            "ナンベン": "幾度と",
+            // 7時
+            "モンゼツ": "苦しい",
+            "モンコウ": "作法の一種",
+            "モンガク": "真言宗の僧",
+            "モンゼン": "払われると悲しい",
+            // 8時
+            "ヒカカク": "競争",
+            "ヒンコウ": "ほうせい",
+            "ヒカガク": "芸術や宗教",
+            "ヒカカン": "順序で結果が変わる",
+            // 9時
+            "トクテイ": "分かる",
+            "トンコウ": "オアシス",
+            "トクガク": "熱心に励む人",
+            "トクテン": "自分に入ると嬉しい",
+            // 10時
+            "サンザル": "日光",
+            "サンコウ": "書",
+            "サンガク": "日本に多い",
+            "サンザン": "な目にあう",
+            // 11時
+            "カンセツ": "税",
+            "カンコウ": "庁",
+            "カンガク": "フルートなど",
+            "カンセン": "拡大の恐れ",
+            // 12時
+            "リキセツ": "熱弁",
+            "リンコウ": "発光現象",
+            "リキガク": "量子ー、ニュートンー",
+            "リキセン": "磁場や電場で向きを指す"
+        };
+
+        let hintDictionary = { ...DEFAULT_HINT_DICTIONARY };
+        let gridData = JSON.parse(JSON.stringify(DEFAULT_GRID_WORDS));
+        let selectedTracks = [1, 2, 3];
+
+        let isLive = true;
+        let currentHour = 12;
+        let currentMin = 0;
+        let currentSec = 0;
+
+        const ALIGNMENT_THRESHOLD_DEG = 6.0;
+        const ORDERED_HOURS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+        function hourToIdx(h) { return h === 12 ? 0 : h; }
+        function normalizeDeg(deg) { let d = deg % 360; return d < 0 ? d + 360 : d; }
+        function angularDiffDeg(a, b) {
+            const diff = Math.abs(normalizeDeg(a) - normalizeDeg(b));
+            return Math.min(diff, 360 - diff);
+        }
+
+        let db = null;
+        function initIndexedDB() {
+            return new Promise((resolve) => {
+                try {
+                    const request = indexedDB.open(DB_NAME, 1);
+                    request.onupgradeneeded = (e) => {
+                        const database = e.target.result;
+                        if (!database.objectStoreNames.contains(DB_STORE)) {
+                            database.createObjectStore(DB_STORE);
+                        }
+                    };
+                    request.onsuccess = (e) => { db = e.target.result; resolve(true); };
+                    request.onerror = () => resolve(false);
+                } catch (e) { resolve(false); }
+            });
+        }
+
+        async function saveData() {
+            try { localStorage.setItem(STORAGE_KEY_HINTS, JSON.stringify(hintDictionary)); } catch (e) {}
+            if (db) {
+                try {
+                    const tx = db.transaction(DB_STORE, 'readwrite');
+                    tx.objectStore(DB_STORE).put(hintDictionary, STORAGE_KEY_HINTS);
+                } catch (e) {}
+            }
+        }
+
+        async function loadData() {
+            await initIndexedDB();
+            let loaded = false;
+            if (db) {
+                try {
+                    const tx = db.transaction(DB_STORE, 'readonly');
+                    const hintsReq = tx.objectStore(DB_STORE).get(STORAGE_KEY_HINTS);
+                    await new Promise((res) => { tx.oncomplete = () => res(); tx.onerror = () => res(); });
+                    if (hintsReq.result && typeof hintsReq.result === 'object') {
+                        hintDictionary = hintsReq.result;
+                        loaded = true;
+                    }
+                } catch (e) {}
+            }
+            if (!loaded) {
+                try {
+                    const saved = localStorage.getItem(STORAGE_KEY_HINTS);
+                    if (saved) hintDictionary = JSON.parse(saved);
+                } catch (e) {}
+            }
+        }
+
+        function flashSaveToast() {
+            const toast = document.getElementById('save-toast');
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 2000);
+        }
+
+        function computeTrackWord(hourNum) {
+            const pos = hourToIdx(hourNum);
+            const secFraction = currentSec / 60;
+            const minFraction = (currentMin + secFraction) / 60;
+            const hourFraction = ((currentHour % 12) + minFraction) / 12;
+
+            const hourDeg = hourFraction * 360;
+            const minDeg = minFraction * 360;
+            const secDeg = secFraction * 360;
+
+            function getAlignedTrackIndex(handDeg) {
+                for (let i = 0; i < 12; i++) {
+                    if (angularDiffDeg(handDeg, i * 30) <= ALIGNMENT_THRESHOLD_DEG) return i;
+                }
+                return -1;
+            }
+
+            const alignedHourIdx = getAlignedTrackIndex(hourDeg);
+            const alignedMinIdx = getAlignedTrackIndex(minDeg);
+            const alignedSecIdx = getAlignedTrackIndex(secDeg);
+
+            let currentTrackChars = [...gridData[pos]];
+
+            if (alignedHourIdx === pos) {
+                currentTrackChars[3] = handHourText[0] || currentTrackChars[3];
+            }
+            if (alignedMinIdx === pos) {
+                currentTrackChars[3] = handMinText[0] || currentTrackChars[3];
+                currentTrackChars[2] = handMinText[1] || currentTrackChars[2];
+            }
+            if (alignedSecIdx === pos) {
+                currentTrackChars[3] = handSecText[0] || currentTrackChars[3];
+                currentTrackChars[2] = handSecText[1] || currentTrackChars[2];
+                currentTrackChars[1] = handSecText[2] || currentTrackChars[1];
+            }
+
+            const posDeg = pos * 30;
+            const isNearHour = angularDiffDeg(hourDeg, posDeg) < 15;
+            const isNearMin = angularDiffDeg(minDeg, posDeg) < 15;
+            const isNearSec = angularDiffDeg(secDeg, posDeg) < 15;
+
+            const isTrackInTransition = (isNearHour && alignedHourIdx === -1) ||
+                                       (isNearMin && alignedMinIdx === -1) ||
+                                       (isNearSec && alignedSecIdx === -1);
+
+            return {
+                word: currentTrackChars.join(''),
+                inTransition: isTrackInTransition
+            };
+        }
+
+        const trackButtonsContainer = document.getElementById('track-buttons-container');
+        const selectionCounter = document.getElementById('selection-counter');
+        const hintCardsContainer = document.getElementById('hint-cards-container');
+
+        function renderTrackButtons() {
+            trackButtonsContainer.innerHTML = '';
+            ORDERED_HOURS.forEach((h) => {
+                const isSelected = selectedTracks.includes(h);
+                const btn = document.createElement('button');
+                btn.className = `h-10 rounded-lg font-black text-sm transition border flex items-center justify-center ${
+                    isSelected
+                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md ring-2 ring-amber-500/30'
+                    : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border-slate-800'
+                }`;
+                btn.textContent = h;
+
+                btn.addEventListener('click', () => {
+                    if (isSelected) {
+                        selectedTracks = selectedTracks.filter(item => item !== h);
+                    } else {
+                        if (selectedTracks.length >= 3) selectedTracks.shift();
+                        selectedTracks.push(h);
+                    }
+                    renderTrackButtons();
+                    renderHintCards();
+                });
+
+                trackButtonsContainer.appendChild(btn);
+            });
+
+            selectionCounter.textContent = `${selectedTracks.length} / 3`;
+        }
+
+        function renderHintCards() {
+            hintCardsContainer.innerHTML = '';
+
+            if (selectedTracks.length === 0) {
+                hintCardsContainer.innerHTML = `
+                    <div class="col-span-full py-8 text-center bg-slate-900 border border-dashed border-slate-800 rounded-xl text-slate-500 text-xs font-bold">
+                        1〜12の数字ボタンを選択してください (最大3つ)
+                    </div>
+                `;
+                return;
+            }
+
+            selectedTracks.forEach((hourNum) => {
+                const computed = computeTrackWord(hourNum);
+                const word = computed.word;
+                const inTransition = computed.inTransition;
+                const hintText = hintDictionary[word] || null;
+
+                const card = document.createElement('div');
+                card.className = 'bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm flex flex-col justify-between gap-3';
+
+                let hintContent = '';
+                if (inTransition || !hintText) {
+                    hintContent = `<p class="text-sm font-black text-slate-500">？？？</p>`;
+                } else {
+                    hintContent = `<p class="text-sm font-bold text-slate-100 leading-relaxed">${hintText}</p>`;
+                }
+
+                card.innerHTML = `
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                            <span class="text-xs font-black bg-slate-950 text-amber-400 border border-slate-800 px-2.5 py-1 rounded font-mono">[ ${hourNum} ]</span>
+                            <span class="text-[10px] font-bold text-slate-500">位置 ${hourNum}</span>
+                        </div>
+                        <div class="pt-1">
+                            ${hintContent}
+                        </div>
+                    </div>
+                `;
+
+                hintCardsContainer.appendChild(card);
+            });
+        }
+
+        const digitalClock = document.getElementById('digital-clock');
+        const btnLive = document.getElementById('btn-live');
+        const sliderHour = document.getElementById('slider-hour');
+        const sliderMin = document.getElementById('slider-min');
+        const sliderSec = document.getElementById('slider-sec');
+        const valHour = document.getElementById('val-hour');
+        const valMin = document.getElementById('val-min');
+        const valSec = document.getElementById('val-sec');
+
+        function updateTimeDisplays() {
+            const hStr = String(currentHour).padStart(2, '0');
+            const mStr = String(currentMin).padStart(2, '0');
+            const sStr = String(Math.floor(currentSec)).padStart(2, '0');
+
+            digitalClock.textContent = `${hStr}:${mStr}:${sStr}`;
+            valHour.textContent = hStr;
+            valMin.textContent = mStr;
+            valSec.textContent = sStr;
+
+            sliderHour.value = currentHour;
+            sliderMin.value = currentMin;
+            sliderSec.value = Math.floor(currentSec);
+
+            renderHintCards();
+        }
+
+        function tick() {
+            if (isLive) {
+                const now = new Date();
+                currentHour = now.getHours();
+                currentMin = now.getMinutes();
+                currentSec = now.getSeconds() + now.getMilliseconds() / 1000;
+                updateTimeDisplays();
+            }
+            requestAnimationFrame(tick);
+        }
+
+        function switchToManual() {
+            isLive = false;
+            btnLive.className = "px-3 py-1 rounded text-xs font-bold flex items-center gap-1.5 transition border border-slate-700 bg-slate-800 text-slate-300";
+            btnLive.innerHTML = '<i class="fa-solid fa-pause text-xs"></i> 手動';
+        }
+
+        const finalAnswerInput = document.getElementById('final-answer-input');
+        const btnSubmitAnswer = document.getElementById('btn-submit-answer');
+        const answerErrorMsg = document.getElementById('answer-error-msg');
+        const clearScreen = document.getElementById('clear-screen');
+        const btnShareX = document.getElementById('btn-share-x');
+
+        let isComposingAnswer = false;
+
+        finalAnswerInput.addEventListener('compositionstart', () => { isComposingAnswer = true; });
+        finalAnswerInput.addEventListener('compositionend', () => { isComposingAnswer = false; });
+
+        function normalizeText(text) {
+            return text.trim()
+                .replace(/[\u30a1-\u30f6]/g, match => String.fromCharCode(match.charCodeAt(0) - 0x60)) // Kana to Hira
+                .replace(/\s+/g, '');
+        }
+
+        function checkFinalAnswer() {
+            const rawVal = finalAnswerInput.value;
+            const normVal = normalizeText(rawVal);
+            const isCorrect = CLEAR_PASSWORDS.some(p => normalizeText(p) === normVal);
+
+            if (isCorrect) {
+                answerErrorMsg.classList.add('hidden');
+                clearScreen.classList.remove('hidden');
+
+                const shareText = encodeURIComponent("WORD PUZZLE をクリアしました！");
+                btnShareX.href = `https://twitter.com/intent/tweet?text=${shareText}`;
+            } else {
+                answerErrorMsg.classList.remove('hidden');
+            }
+        }
+
+        btnSubmitAnswer.addEventListener('click', checkFinalAnswer);
+        finalAnswerInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !isComposingAnswer) {
+                checkFinalAnswer();
+            }
+        });
+
+        const adminTimePanel = document.getElementById('admin-time-panel');
+        const adminDictPanel = document.getElementById('admin-dict-panel');
+        const btnAdminToggle = document.getElementById('btn-admin-toggle');
+        const passwordModal = document.getElementById('password-modal');
+        const adminPassInput = document.getElementById('admin-pass-input');
+        const modalErrorMsg = document.getElementById('modal-error-msg');
+        const btnCloseModal = document.getElementById('btn-close-modal');
+        const btnCancelModal = document.getElementById('btn-cancel-modal');
+        const btnSubmitModal = document.getElementById('btn-submit-modal');
+        const dictionaryListContainer = document.getElementById('dictionary-list-container');
+
+        btnAdminToggle.addEventListener('click', () => {
+            if (isAdmin) {
+                isAdmin = false;
+                adminTimePanel.classList.add('hidden');
+                adminDictPanel.classList.add('hidden');
+                btnAdminToggle.innerHTML = '<i class="fa-solid fa-lock text-sm"></i>';
+                btnAdminToggle.className = "p-2 rounded text-xs font-bold transition flex items-center justify-center border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 shadow-sm";
+            } else {
+                adminPassInput.value = '';
+                modalErrorMsg.classList.add('hidden');
+                passwordModal.classList.remove('hidden');
+                adminPassInput.focus();
+            }
+        });
+
+        function verifyPassword() {
+            if (adminPassInput.value.trim() === ADMIN_PASSWORD) {
+                isAdmin = true;
+                passwordModal.classList.add('hidden');
+                adminTimePanel.classList.remove('hidden');
+                adminDictPanel.classList.remove('hidden');
+                btnAdminToggle.innerHTML = '<i class="fa-solid fa-lock-open text-sm"></i>';
+                btnAdminToggle.className = "p-2 rounded text-xs font-bold transition flex items-center justify-center border border-amber-500 bg-amber-500 text-slate-950 shadow-sm";
+                renderDictionaryList();
+            } else {
+                modalErrorMsg.classList.remove('hidden');
+            }
+        }
+
+        btnSubmitModal.addEventListener('click', verifyPassword);
+        btnCloseModal.addEventListener('click', () => passwordModal.classList.add('hidden'));
+        btnCancelModal.addEventListener('click', () => passwordModal.classList.add('hidden'));
+        adminPassInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') verifyPassword(); });
+
+        btnLive.addEventListener('click', () => {
+            isLive = !isLive;
+            if (isLive) {
+                btnLive.className = "px-3 py-1 rounded text-xs font-bold flex items-center gap-1.5 transition border border-rose-500 bg-rose-950/40 text-rose-400 hover:bg-rose-900/50";
+                btnLive.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span> LIVE';
+            } else {
+                switchToManual();
+            }
+        });
+
+        sliderHour.addEventListener('input', (e) => { switchToManual(); currentHour = parseInt(e.target.value); updateTimeDisplays(); });
+        sliderMin.addEventListener('input', (e) => { switchToManual(); currentMin = parseInt(e.target.value); updateTimeDisplays(); });
+        sliderSec.addEventListener('input', (e) => { switchToManual(); currentSec = parseInt(e.target.value); updateTimeDisplays(); });
+        document.getElementById('btn-zero-sec').addEventListener('click', () => { switchToManual(); currentHour = 12; currentMin = 0; currentSec = 0; updateTimeDisplays(); });
+
+        function renderDictionaryList() {
+            dictionaryListContainer.innerHTML = '';
+            Object.keys(hintDictionary).forEach((wordKey) => {
+                const row = document.createElement('div');
+                row.className = 'p-2 bg-slate-950 border border-slate-800 rounded flex gap-2 items-center';
+
+                const wordLabel = document.createElement('span');
+                wordLabel.className = 'w-24 text-xs font-mono font-bold text-amber-400';
+                wordLabel.textContent = wordKey;
+
+                const hintInput = document.createElement('input');
+                hintInput.type = 'text';
+                hintInput.value = hintDictionary[wordKey];
+                hintInput.className = 'flex-1 py-1 px-2 text-xs bg-slate-900 border border-slate-700 rounded text-slate-100 focus:outline-none focus:border-amber-400';
+
+                let isComp = false;
+                hintInput.addEventListener('compositionstart', () => { isComp = true; });
+                hintInput.addEventListener('compositionend', (e) => { isComp = false; hintDictionary[wordKey] = e.target.value; saveData(); renderHintCards(); });
+                hintInput.addEventListener('input', (e) => { if (!isComp) { hintDictionary[wordKey] = e.target.value; saveData(); renderHintCards(); } });
+
+                row.appendChild(wordLabel);
+                row.appendChild(hintInput);
+                dictionaryListContainer.appendChild(row);
+            });
+        }
+
+        document.getElementById('btn-save-manual').addEventListener('click', async () => { await saveData(); flashSaveToast(); });
+        document.getElementById('btn-export-json').addEventListener('click', () => {
+            const blob = new Blob([JSON.stringify(hintDictionary, null, 2)], { type: 'application/json' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'word_puzzle_hints.json';
+            a.click();
+        });
+        document.getElementById('btn-import-json').addEventListener('click', () => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = 'application/json';
+            input.onchange = (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = async (evt) => {
+                        try {
+                            hintDictionary = JSON.parse(evt.target.result);
+                            await saveData();
+                            renderDictionaryList();
+                            renderHintCards();
+                            flashSaveToast();
+                        } catch (err) {}
+                    };
+                    reader.readAsText(file);
+                }
+            };
+            input.click();
+        });
+
+        window.onload = async () => {
+            await loadData();
+            renderTrackButtons();
+            updateTimeDisplays();
+            tick();
+        };
+    </script>
+</body>
+</html>
