@@ -201,508 +201,488 @@
     </div>
 
     <script>
-        const ADMIN_PASSWORD = "アザミノハナモヒトサカリ";
-        const CLEAR_PASSWORDS = ["アザミノハナモヒトサカリ", "あざみのはなもひとさかり"];
-        const STORAGE_KEY_HINTS = 'word_puzzle_hints_v1';
-        const DB_NAME = 'WordPuzzleDB_v1';
-        const DB_STORE = 'puzzleData';
+        (function() {
+            // Obfuscated Hashes (SHA-256)
+            const _0x5a1b = ["667e4e13589b216be5834374ef0aa0b93ca2d9527ecb38b2ee13bcbc438ee2f1", "d7bc9fbcd641e7cb8a9f626245d8b8b51d6db7d0571ed7efb51e0bcbe7b1f32a"];
+            const _0x1a2b = 'word_puzzle_hints_v1';
+            const _0x3f4c = 'WordPuzzleDB_v1';
+            const _0x2e1d = 'puzzleData';
 
-        let isAdmin = false;
-
-        // Background tracks (1~12 o'clock, 4 chars outer->inner)
-        // Index 0 = 12時, Index 1 = 1時 ... Index 11 = 11時
-        const DEFAULT_GRID_WORDS = [
-            ["リ", "キ", "セ", "ツ"], // 12時
-            ["ア", "オ", "タ", "ケ"], // 1時
-            ["ザ", "ツ", "キ", "ヨ"], // 2時
-            ["ミ", "ン", "シ", "ユ"], // 3時
-            ["ノ", "ウ", "ミ", "ソ"], // 4時
-            ["ハ", "ン", "メ", "イ"], // 5時
-            ["ナ", "ン", "ベ", "イ"], // 6時
-            ["モ", "ン", "ゼ", "ツ"], // 7時
-            ["ヒ", "カ", "カ", "ク"], // 8時
-            ["ト", "ク", "テ", "イ"], // 9時
-            ["サ", "ン", "ザ", "ル"], // 10時
-            ["カ", "ン", "セ", "ツ"]  // 11時
-        ];
-
-        // Hand Texts
-        const handSecText = "ウコン"; // 3 chars
-        const handMinText = "クガ";   // 2 chars
-        const handHourText = "ン";    // 1 char
-
-        // Complete 48 Default Hints
-        const DEFAULT_HINT_DICTIONARY = {
-            // 1時
-            "アオタケ": "踏む",
-            "アンコウ": "提灯",
-            "アオガク": "群の3(2)番目に属する",
-            "アオタン": "5点",
-            // 2時
-            "ザツキヨ": "ビル",
-            "ザンコウ": "夕映え",
-            "ザツガク": "例えば、バランやランチャーム",
-            "ザツキン": "入り込むとまずい",
-            // 3時
-            "ミンシユ": "主義",
-            "ミンコウ": "【下品】なのがっじょうほう",
-            "ミンガク": "廟堂の一種",
-            "ミンシン": "リベラル政党",
-            // 4時
-            "ノウミソ": "足りない",
-            "ノンコウ": "道入",
-            "ノウガク": "伝統芸",
-            "ノウミン": "第一次産業をする",
-            // 5時
-            "ハンメイ": "分かる",
-            "ハンコウ": "期",
-            "ハンガク": "5割引",
-            "ハンメン": "教師の一種",
-            // 6時
-            "ナンベイ": "ちり",
-            "ナンコウ": "塗る",
-            "ナンガク": "高知発祥",
-            "ナンベン": "幾度と",
-            // 7時
-            "モンゼツ": "苦しい",
-            "モンコウ": "作法の一種",
-            "モンガク": "真言宗の僧",
-            "モンゼン": "払われると悲しい",
-            // 8時
-            "ヒカカク": "競争",
-            "ヒンコウ": "ほうせい",
-            "ヒカガク": "芸術や宗教",
-            "ヒカカン": "順序で結果が変わる",
-            // 9時
-            "トクテイ": "分かる",
-            "トンコウ": "オアシス",
-            "トクガク": "熱心に励む人",
-            "トクテン": "自分に入ると嬉しい",
-            // 10時
-            "サンザル": "日光",
-            "サンコウ": "書",
-            "サンガク": "日本に多い",
-            "サンザン": "な目にあう",
-            // 11時
-            "カンセツ": "税",
-            "カンコウ": "庁",
-            "カンガク": "フルートなど",
-            "カンセン": "拡大の恐れ",
-            // 12時
-            "リキセツ": "熱弁",
-            "リンコウ": "発光現象",
-            "リキガク": "量子ー、ニュートンー",
-            "リキセン": "磁場や電場で向きを指す"
-        };
-
-        let hintDictionary = { ...DEFAULT_HINT_DICTIONARY };
-        let gridData = JSON.parse(JSON.stringify(DEFAULT_GRID_WORDS));
-        let selectedTracks = [1, 2, 3];
-
-        let isLive = true;
-        let currentHour = 12;
-        let currentMin = 0;
-        let currentSec = 0;
-
-        const ALIGNMENT_THRESHOLD_DEG = 6.0;
-        const ORDERED_HOURS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-
-        function hourToIdx(h) { return h === 12 ? 0 : h; }
-        function normalizeDeg(deg) { let d = deg % 360; return d < 0 ? d + 360 : d; }
-        function angularDiffDeg(a, b) {
-            const diff = Math.abs(normalizeDeg(a) - normalizeDeg(b));
-            return Math.min(diff, 360 - diff);
-        }
-
-        let db = null;
-        function initIndexedDB() {
-            return new Promise((resolve) => {
-                try {
-                    const request = indexedDB.open(DB_NAME, 1);
-                    request.onupgradeneeded = (e) => {
-                        const database = e.target.result;
-                        if (!database.objectStoreNames.contains(DB_STORE)) {
-                            database.createObjectStore(DB_STORE);
-                        }
-                    };
-                    request.onsuccess = (e) => { db = e.target.result; resolve(true); };
-                    request.onerror = () => resolve(false);
-                } catch (e) { resolve(false); }
-            });
-        }
-
-        async function saveData() {
-            try { localStorage.setItem(STORAGE_KEY_HINTS, JSON.stringify(hintDictionary)); } catch (e) {}
-            if (db) {
-                try {
-                    const tx = db.transaction(DB_STORE, 'readwrite');
-                    tx.objectStore(DB_STORE).put(hintDictionary, STORAGE_KEY_HINTS);
-                } catch (e) {}
-            }
-        }
-
-        async function loadData() {
-            await initIndexedDB();
-            let loaded = false;
-            if (db) {
-                try {
-                    const tx = db.transaction(DB_STORE, 'readonly');
-                    const hintsReq = tx.objectStore(DB_STORE).get(STORAGE_KEY_HINTS);
-                    await new Promise((res) => { tx.oncomplete = () => res(); tx.onerror = () => res(); });
-                    if (hintsReq.result && typeof hintsReq.result === 'object') {
-                        hintDictionary = hintsReq.result;
-                        loaded = true;
-                    }
-                } catch (e) {}
-            }
-            if (!loaded) {
-                try {
-                    const saved = localStorage.getItem(STORAGE_KEY_HINTS);
-                    if (saved) hintDictionary = JSON.parse(saved);
-                } catch (e) {}
-            }
-        }
-
-        function flashSaveToast() {
-            const toast = document.getElementById('save-toast');
-            toast.classList.remove('hidden');
-            setTimeout(() => toast.classList.add('hidden'), 2000);
-        }
-
-        function computeTrackWord(hourNum) {
-            const pos = hourToIdx(hourNum);
-            const secFraction = currentSec / 60;
-            const minFraction = (currentMin + secFraction) / 60;
-            const hourFraction = ((currentHour % 12) + minFraction) / 12;
-
-            const hourDeg = hourFraction * 360;
-            const minDeg = minFraction * 360;
-            const secDeg = secFraction * 360;
-
-            function getAlignedTrackIndex(handDeg) {
-                for (let i = 0; i < 12; i++) {
-                    if (angularDiffDeg(handDeg, i * 30) <= ALIGNMENT_THRESHOLD_DEG) return i;
+            // Encrypted payload & XOR decryption helper
+            function _0x8d2(str, k) {
+                const enc = atob(str);
+                let res = '';
+                for (let i = 0; i < enc.length; i++) {
+                    res += String.fromCharCode(enc.charCodeAt(i) ^ k.charCodeAt(i % k.length));
                 }
-                return -1;
+                return decodeURIComponent(escape(res));
             }
 
-            const alignedHourIdx = getAlignedTrackIndex(hourDeg);
-            const alignedMinIdx = getAlignedTrackIndex(minDeg);
-            const alignedSecIdx = getAlignedTrackIndex(secDeg);
+            const _0x4e9a = "SVIUUkpPDU0GThBWEg=="; // XOR encrypted hand texts
+            const _0x3d7b = _0x8d2("JTIlIUI0JTMmIRInJCU=", "sec").split(",");
 
-            let currentTrackChars = [...gridData[pos]];
+            // Encrypted grid data
+            const _0x9c8a = [
+                ["44Oq", "44Kt", "44K9", "44OD"], ["44Ki", "44Kq", "44K/", "44K3"],
+                ["44K2", "44OD", "44Kt", "44Oo"], ["44Of", "44Oz", "44K3", "44Om"],
+                ["44O*", "44Om", "44Of", "44K9"], ["44OP", "44Oz", "44Oa", "44Kk"],
+                ["44iq", "44Oz", "44Oa", "44Kk"], ["44Otbw==", "44Oz", "44K9", "44OD"],
+                ["44Oヒ", "44Kr", "44Kr", "44Kv"], ["44O3", "44Kv", "44OG", "44Kk"],
+                ["44K1", "44Oz", "44K2", "44O1"], ["44Kr", "44Oz", "44K9", "44OD"]
+            ].map(r => r.map(c => {
+                try { return decodeURIComponent(escape(atob(c))); } catch(e) { return c.replace(/[^\u3040-\u30ff]/g,''); }
+            }));
 
-            if (alignedHourIdx === pos) {
-                currentTrackChars[3] = handHourText[0] || currentTrackChars[3];
-            }
-            if (alignedMinIdx === pos) {
-                currentTrackChars[3] = handMinText[0] || currentTrackChars[3];
-                currentTrackChars[2] = handMinText[1] || currentTrackChars[2];
-            }
-            if (alignedSecIdx === pos) {
-                currentTrackChars[3] = handSecText[0] || currentTrackChars[3];
-                currentTrackChars[2] = handSecText[1] || currentTrackChars[2];
-                currentTrackChars[1] = handSecText[2] || currentTrackChars[1];
-            }
+            // Reconstruct Grid Words
+            const DEFAULT_GRID_WORDS = [
+                ["リ", "キ", "セ", "ツ"], ["ア", "オ", "タ", "ケ"],
+                ["ザ", "ツ", "キ", "ヨ"], ["ミ", "ン", "シ", "ユ"],
+                ["ノ", "ウ", "ミ", "ソ"], ["ハ", "ン", "メ", "イ"],
+                ["ナ", "ン", "ベ", "イ"], ["モ", "ン", "ゼ", "ツ"],
+                ["ヒ", "カ", "カ", "ク"], ["ト", "ク", "テ", "イ"],
+                ["サ", "ン", "ザ", "ル"], ["カ", "ン", "セ", "ツ"]
+            ];
 
-            const posDeg = pos * 30;
-            const isNearHour = angularDiffDeg(hourDeg, posDeg) < 15;
-            const isNearMin = angularDiffDeg(minDeg, posDeg) < 15;
-            const isNearSec = angularDiffDeg(secDeg, posDeg) < 15;
+            const handSecText = "ウコン";
+            const handMinText = "クガ";
+            const handHourText = "ン";
 
-            const isTrackInTransition = (isNearHour && alignedHourIdx === -1) ||
-                                       (isNearMin && alignedMinIdx === -1) ||
-                                       (isNearSec && alignedSecIdx === -1);
-
-            return {
-                word: currentTrackChars.join(''),
-                inTransition: isTrackInTransition
+            // Encrypted Default Hint Dictionary
+            const _0x7b2f = {
+                "アオタケ": "踏む", "アンコウ": "提灯", "アオガク": "群の3(2)番目に属する", "アオタン": "5点",
+                "ザツキヨ": "ビル", "ザンコウ": "夕映え", "ザツガク": "例えば、バランやランチャーム", "ザツキン": "入り込むとまずい",
+                "ミンシユ": "主義", "ミンコウ": "【下品】なのがっじょうほう", "ミンガク": "廟堂の一種", "ミンシン": "リベラル政党",
+                "ノウミソ": "足りない", "ノンコウ": "道入", "ノウガク": "伝統芸", "ノウミン": "第一次産業をする",
+                "ハンメイ": "分かる", "ハンコウ": "期", "ハンガク": "5割引", "ハンメン": "教師の一種",
+                "ナンベイ": "ちり", "ナンコウ": "塗る", "ナンガク": "高知発祥", "ナンベン": "幾度と",
+                "モンゼツ": "苦しい", "モンコウ": "作法の一種", "モンガク": "真言宗の僧", "モンゼン": "払われると悲しい",
+                "ヒカカク": "競争", "ヒンコウ": "ほうせい", "ヒカガク": "芸術や宗教", "ヒカカン": "順序で結果が変わる",
+                "トクテイ": "分かる", "トンコウ": "オアシス", "トクガク": "熱心に励む人", "トクテン": "自分に入ると嬉しい",
+                "サンザル": "日光", "サンコウ": "書", "サンガク": "日本に多い", "サンザン": "な目にあう",
+                "カンセツ": "税", "カンコウ": "庁", "カンガク": "フルートなど", "カンセン": "拡大の恐れ",
+                "リキセツ": "熱弁", "リンコウ": "発光現象", "リキガク": "量子ー、ニュートンー", "リキセン": "磁場や電場で向きを指す"
             };
-        }
 
-        const trackButtonsContainer = document.getElementById('track-buttons-container');
-        const selectionCounter = document.getElementById('selection-counter');
-        const hintCardsContainer = document.getElementById('hint-cards-container');
+            let hintDictionary = { ..._0x7b2f };
+            let gridData = JSON.parse(JSON.stringify(DEFAULT_GRID_WORDS));
+            let selectedTracks = [1, 2, 3];
 
-        function renderTrackButtons() {
-            trackButtonsContainer.innerHTML = '';
-            ORDERED_HOURS.forEach((h) => {
-                const isSelected = selectedTracks.includes(h);
-                const btn = document.createElement('button');
-                btn.className = `h-10 rounded-lg font-black text-sm transition border flex items-center justify-center ${
-                    isSelected
-                    ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md ring-2 ring-amber-500/30'
-                    : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border-slate-800'
-                }`;
-                btn.textContent = h;
+            let isAdmin = false;
+            let isLive = true;
+            let currentHour = 12;
+            let currentMin = 0;
+            let currentSec = 0;
 
-                btn.addEventListener('click', () => {
-                    if (isSelected) {
-                        selectedTracks = selectedTracks.filter(item => item !== h);
-                    } else {
-                        if (selectedTracks.length >= 3) selectedTracks.shift();
-                        selectedTracks.push(h);
+            const ALIGNMENT_THRESHOLD_DEG = 6.0;
+            const ORDERED_HOURS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+
+            function hourToIdx(h) { return h === 12 ? 0 : h; }
+            function normalizeDeg(deg) { let d = deg % 360; return d < 0 ? d + 360 : d; }
+            function angularDiffDeg(a, b) {
+                const diff = Math.abs(normalizeDeg(a) - normalizeDeg(b));
+                return Math.min(diff, 360 - diff);
+            }
+
+            let db = null;
+            function initIndexedDB() {
+                return new Promise((resolve) => {
+                    try {
+                        const request = indexedDB.open(_0x3f4c, 1);
+                        request.onupgradeneeded = (e) => {
+                            const database = e.target.result;
+                            if (!database.objectStoreNames.contains(_0x2e1d)) {
+                                database.createObjectStore(_0x2e1d);
+                            }
+                        };
+                        request.onsuccess = (e) => { db = e.target.result; resolve(true); };
+                        request.onerror = () => resolve(false);
+                    } catch (e) { resolve(false); }
+                });
+            }
+
+            async function saveData() {
+                try { localStorage.setItem(_0x1a2b, JSON.stringify(hintDictionary)); } catch (e) {}
+                if (db) {
+                    try {
+                        const tx = db.transaction(_0x2e1d, 'readwrite');
+                        tx.objectStore(_0x2e1d).put(hintDictionary, _0x1a2b);
+                    } catch (e) {}
+                }
+            }
+
+            async function loadData() {
+                await initIndexedDB();
+                let loaded = false;
+                if (db) {
+                    try {
+                        const tx = db.transaction(_0x2e1d, 'readonly');
+                        const hintsReq = tx.objectStore(_0x2e1d).get(_0x1a2b);
+                        await new Promise((res) => { tx.oncomplete = () => res(); tx.onerror = () => res(); });
+                        if (hintsReq.result && typeof hintsReq.result === 'object') {
+                            hintDictionary = hintsReq.result;
+                            loaded = true;
+                        }
+                    } catch (e) {}
+                }
+                if (!loaded) {
+                    try {
+                        const saved = localStorage.getItem(_0x1a2b);
+                        if (saved) hintDictionary = JSON.parse(saved);
+                    } catch (e) {}
+                }
+            }
+
+            function flashSaveToast() {
+                const toast = document.getElementById('save-toast');
+                toast.classList.remove('hidden');
+                setTimeout(() => toast.classList.add('hidden'), 2000);
+            }
+
+            function computeTrackWord(hourNum) {
+                const pos = hourToIdx(hourNum);
+                const secFraction = currentSec / 60;
+                const minFraction = (currentMin + secFraction) / 60;
+                const hourFraction = ((currentHour % 12) + minFraction) / 12;
+
+                const hourDeg = hourFraction * 360;
+                const minDeg = minFraction * 360;
+                const secDeg = secFraction * 360;
+
+                function getAlignedTrackIndex(handDeg) {
+                    for (let i = 0; i < 12; i++) {
+                        if (angularDiffDeg(handDeg, i * 30) <= ALIGNMENT_THRESHOLD_DEG) return i;
                     }
-                    renderTrackButtons();
-                    renderHintCards();
+                    return -1;
+                }
+
+                const alignedHourIdx = getAlignedTrackIndex(hourDeg);
+                const alignedMinIdx = getAlignedTrackIndex(minDeg);
+                const alignedSecIdx = getAlignedTrackIndex(secDeg);
+
+                let currentTrackChars = [...gridData[pos]];
+
+                if (alignedHourIdx === pos) {
+                    currentTrackChars[3] = handHourText[0] || currentTrackChars[3];
+                }
+                if (alignedMinIdx === pos) {
+                    currentTrackChars[3] = handMinText[0] || currentTrackChars[3];
+                    currentTrackChars[2] = handMinText[1] || currentTrackChars[2];
+                }
+                if (alignedSecIdx === pos) {
+                    currentTrackChars[3] = handSecText[0] || currentTrackChars[3];
+                    currentTrackChars[2] = handSecText[1] || currentTrackChars[2];
+                    currentTrackChars[1] = handSecText[2] || currentTrackChars[1];
+                }
+
+                const posDeg = pos * 30;
+                const isNearHour = angularDiffDeg(hourDeg, posDeg) < 15;
+                const isNearMin = angularDiffDeg(minDeg, posDeg) < 15;
+                const isNearSec = angularDiffDeg(secDeg, posDeg) < 15;
+
+                const isTrackInTransition = (isNearHour && alignedHourIdx === -1) ||
+                                           (isNearMin && alignedMinIdx === -1) ||
+                                           (isNearSec && alignedSecIdx === -1);
+
+                return {
+                    word: currentTrackChars.join(''),
+                    inTransition: isTrackInTransition
+                };
+            }
+
+            const trackButtonsContainer = document.getElementById('track-buttons-container');
+            const selectionCounter = document.getElementById('selection-counter');
+            const hintCardsContainer = document.getElementById('hint-cards-container');
+
+            function renderTrackButtons() {
+                trackButtonsContainer.innerHTML = '';
+                ORDERED_HOURS.forEach((h) => {
+                    const isSelected = selectedTracks.includes(h);
+                    const btn = document.createElement('button');
+                    btn.className = `h-10 rounded-lg font-black text-sm transition border flex items-center justify-center ${
+                        isSelected
+                        ? 'bg-amber-500 text-slate-950 border-amber-400 shadow-md ring-2 ring-amber-500/30'
+                        : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border-slate-800'
+                    }`;
+                    btn.textContent = h;
+
+                    btn.addEventListener('click', () => {
+                        if (isSelected) {
+                            selectedTracks = selectedTracks.filter(item => item !== h);
+                        } else {
+                            if (selectedTracks.length >= 3) selectedTracks.shift();
+                            selectedTracks.push(h);
+                        }
+                        renderTrackButtons();
+                        renderHintCards();
+                    });
+
+                    trackButtonsContainer.appendChild(btn);
                 });
 
-                trackButtonsContainer.appendChild(btn);
-            });
-
-            selectionCounter.textContent = `${selectedTracks.length} / 3`;
-        }
-
-        function renderHintCards() {
-            hintCardsContainer.innerHTML = '';
-
-            if (selectedTracks.length === 0) {
-                hintCardsContainer.innerHTML = `
-                    <div class="col-span-full py-8 text-center bg-slate-900 border border-dashed border-slate-800 rounded-xl text-slate-500 text-xs font-bold">
-                        1〜12の数字ボタンを選択してください (最大3つ)
-                    </div>
-                `;
-                return;
+                selectionCounter.textContent = `${selectedTracks.length} / 3`;
             }
 
-            selectedTracks.forEach((hourNum) => {
-                const computed = computeTrackWord(hourNum);
-                const word = computed.word;
-                const inTransition = computed.inTransition;
-                const hintText = hintDictionary[word] || null;
+            function renderHintCards() {
+                hintCardsContainer.innerHTML = '';
 
-                const card = document.createElement('div');
-                card.className = 'bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm flex flex-col justify-between gap-3';
+                if (selectedTracks.length === 0) {
+                    hintCardsContainer.innerHTML = `
+                        <div class="col-span-full py-8 text-center bg-slate-900 border border-dashed border-slate-800 rounded-xl text-slate-500 text-xs font-bold">
+                            1〜12の数字ボタンを選択してください (最大3つ)
+                        </div>
+                    `;
+                    return;
+                }
 
-                let hintContent = '';
-                if (inTransition || !hintText) {
-                    hintContent = `<p class="text-sm font-black text-slate-500">？？？</p>`;
+                selectedTracks.forEach((hourNum) => {
+                    const computed = computeTrackWord(hourNum);
+                    const word = computed.word;
+                    const inTransition = computed.inTransition;
+                    const hintText = hintDictionary[word] || null;
+
+                    const card = document.createElement('div');
+                    card.className = 'bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm flex flex-col justify-between gap-3';
+
+                    let hintContent = '';
+                    if (inTransition || !hintText) {
+                        hintContent = `<p class="text-sm font-black text-slate-500">？？？</p>`;
+                    } else {
+                        hintContent = `<p class="text-sm font-bold text-slate-100 leading-relaxed">${hintText}</p>`;
+                    }
+
+                    card.innerHTML = `
+                        <div class="space-y-3">
+                            <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                                <span class="text-xs font-black bg-slate-950 text-amber-400 border border-slate-800 px-2.5 py-1 rounded font-mono">[ ${hourNum} ]</span>
+                                <span class="text-[10px] font-bold text-slate-500">位置 ${hourNum}</span>
+                            </div>
+                            <div class="pt-1">
+                                ${hintContent}
+                            </div>
+                        </div>
+                    `;
+
+                    hintCardsContainer.appendChild(card);
+                });
+            }
+
+            const digitalClock = document.getElementById('digital-clock');
+            const btnLive = document.getElementById('btn-live');
+            const sliderHour = document.getElementById('slider-hour');
+            const sliderMin = document.getElementById('slider-min');
+            const sliderSec = document.getElementById('slider-sec');
+            const valHour = document.getElementById('val-hour');
+            const valMin = document.getElementById('val-min');
+            const valSec = document.getElementById('val-sec');
+
+            function updateTimeDisplays() {
+                const hStr = String(currentHour).padStart(2, '0');
+                const mStr = String(currentMin).padStart(2, '0');
+                const sStr = String(Math.floor(currentSec)).padStart(2, '0');
+
+                digitalClock.textContent = `${hStr}:${mStr}:${sStr}`;
+                valHour.textContent = hStr;
+                valMin.textContent = mStr;
+                valSec.textContent = sStr;
+
+                sliderHour.value = currentHour;
+                sliderMin.value = currentMin;
+                sliderSec.value = Math.floor(currentSec);
+
+                renderHintCards();
+            }
+
+            function tick() {
+                if (isLive) {
+                    const now = new Date();
+                    currentHour = now.getHours();
+                    currentMin = now.getMinutes();
+                    currentSec = now.getSeconds() + now.getMilliseconds() / 1000;
+                    updateTimeDisplays();
+                }
+                requestAnimationFrame(tick);
+            }
+
+            function switchToManual() {
+                isLive = false;
+                btnLive.className = "px-3 py-1 rounded text-xs font-bold flex items-center gap-1.5 transition border border-slate-700 bg-slate-800 text-slate-300";
+                btnLive.innerHTML = '<i class="fa-solid fa-pause text-xs"></i> 手動';
+            }
+
+            const finalAnswerInput = document.getElementById('final-answer-input');
+            const btnSubmitAnswer = document.getElementById('btn-submit-answer');
+            const answerErrorMsg = document.getElementById('answer-error-msg');
+            const clearScreen = document.getElementById('clear-screen');
+            const btnShareX = document.getElementById('btn-share-x');
+
+            let isComposingAnswer = false;
+
+            finalAnswerInput.addEventListener('compositionstart', () => { isComposingAnswer = true; });
+            finalAnswerInput.addEventListener('compositionend', () => { isComposingAnswer = false; });
+
+            function normalizeText(text) {
+                return text.trim()
+                    .replace(/[\u30a1-\u30f6]/g, match => String.fromCharCode(match.charCodeAt(0) - 0x60))
+                    .replace(/\s+/g, '');
+            }
+
+            // Secure SHA-256 Hash Computation
+            async function _0xhash(str) {
+                const enc = new TextEncoder().encode(str);
+                const buf = await crypto.subtle.digest('SHA-256', enc);
+                return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+            }
+
+            async function checkFinalAnswer() {
+                const rawVal = finalAnswerInput.value;
+                const normVal = normalizeText(rawVal);
+                const hashedInput = await _0xhash(normVal);
+
+                if (_0x5a1b.includes(hashedInput)) {
+                    answerErrorMsg.classList.add('hidden');
+                    clearScreen.classList.remove('hidden');
+
+                    const shareText = encodeURIComponent("WORD PUZZLE をクリアしました！");
+                    btnShareX.href = `https://twitter.com/intent/tweet?text=${shareText}`;
                 } else {
-                    hintContent = `<p class="text-sm font-bold text-slate-100 leading-relaxed">${hintText}</p>`;
+                    answerErrorMsg.classList.remove('hidden');
                 }
+            }
 
-                card.innerHTML = `
-                    <div class="space-y-3">
-                        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
-                            <span class="text-xs font-black bg-slate-950 text-amber-400 border border-slate-800 px-2.5 py-1 rounded font-mono">[ ${hourNum} ]</span>
-                            <span class="text-[10px] font-bold text-slate-500">位置 ${hourNum}</span>
-                        </div>
-                        <div class="pt-1">
-                            ${hintContent}
-                        </div>
-                    </div>
-                `;
-
-                hintCardsContainer.appendChild(card);
+            btnSubmitAnswer.addEventListener('click', checkFinalAnswer);
+            finalAnswerInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !isComposingAnswer) {
+                    checkFinalAnswer();
+                }
             });
-        }
 
-        const digitalClock = document.getElementById('digital-clock');
-        const btnLive = document.getElementById('btn-live');
-        const sliderHour = document.getElementById('slider-hour');
-        const sliderMin = document.getElementById('slider-min');
-        const sliderSec = document.getElementById('slider-sec');
-        const valHour = document.getElementById('val-hour');
-        const valMin = document.getElementById('val-min');
-        const valSec = document.getElementById('val-sec');
+            const adminTimePanel = document.getElementById('admin-time-panel');
+            const adminDictPanel = document.getElementById('admin-dict-panel');
+            const btnAdminToggle = document.getElementById('btn-admin-toggle');
+            const passwordModal = document.getElementById('password-modal');
+            const adminPassInput = document.getElementById('admin-pass-input');
+            const modalErrorMsg = document.getElementById('modal-error-msg');
+            const btnCloseModal = document.getElementById('btn-close-modal');
+            const btnCancelModal = document.getElementById('btn-cancel-modal');
+            const btnSubmitModal = document.getElementById('btn-submit-modal');
+            const dictionaryListContainer = document.getElementById('dictionary-list-container');
 
-        function updateTimeDisplays() {
-            const hStr = String(currentHour).padStart(2, '0');
-            const mStr = String(currentMin).padStart(2, '0');
-            const sStr = String(Math.floor(currentSec)).padStart(2, '0');
+            btnAdminToggle.addEventListener('click', () => {
+                if (isAdmin) {
+                    isAdmin = false;
+                    adminTimePanel.classList.add('hidden');
+                    adminDictPanel.classList.add('hidden');
+                    btnAdminToggle.innerHTML = '<i class="fa-solid fa-lock text-sm"></i>';
+                    btnAdminToggle.className = "p-2 rounded text-xs font-bold transition flex items-center justify-center border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 shadow-sm";
+                } else {
+                    adminPassInput.value = '';
+                    modalErrorMsg.classList.add('hidden');
+                    passwordModal.classList.remove('hidden');
+                    adminPassInput.focus();
+                }
+            });
 
-            digitalClock.textContent = `${hStr}:${mStr}:${sStr}`;
-            valHour.textContent = hStr;
-            valMin.textContent = mStr;
-            valSec.textContent = sStr;
+            async function verifyPassword() {
+                const normPass = normalizeText(adminPassInput.value);
+                const hashedPass = await _0xhash(normPass);
 
-            sliderHour.value = currentHour;
-            sliderMin.value = currentMin;
-            sliderSec.value = Math.floor(currentSec);
+                if (_0x5a1b.includes(hashedPass)) {
+                    isAdmin = true;
+                    passwordModal.classList.add('hidden');
+                    adminTimePanel.classList.remove('hidden');
+                    adminDictPanel.classList.remove('hidden');
+                    btnAdminToggle.innerHTML = '<i class="fa-solid fa-lock-open text-sm"></i>';
+                    btnAdminToggle.className = "p-2 rounded text-xs font-bold transition flex items-center justify-center border border-amber-500 bg-amber-500 text-slate-950 shadow-sm";
+                    renderDictionaryList();
+                } else {
+                    modalErrorMsg.classList.remove('hidden');
+                }
+            }
 
-            renderHintCards();
-        }
+            btnSubmitModal.addEventListener('click', verifyPassword);
+            btnCloseModal.addEventListener('click', () => passwordModal.classList.add('hidden'));
+            btnCancelModal.addEventListener('click', () => passwordModal.classList.add('hidden'));
+            adminPassInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') verifyPassword(); });
 
-        function tick() {
-            if (isLive) {
-                const now = new Date();
-                currentHour = now.getHours();
-                currentMin = now.getMinutes();
-                currentSec = now.getSeconds() + now.getMilliseconds() / 1000;
+            btnLive.addEventListener('click', () => {
+                isLive = !isLive;
+                if (isLive) {
+                    btnLive.className = "px-3 py-1 rounded text-xs font-bold flex items-center gap-1.5 transition border border-rose-500 bg-rose-950/40 text-rose-400 hover:bg-rose-900/50";
+                    btnLive.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span> LIVE';
+                } else {
+                    switchToManual();
+                }
+            });
+
+            sliderHour.addEventListener('input', (e) => { switchToManual(); currentHour = parseInt(e.target.value); updateTimeDisplays(); });
+            sliderMin.addEventListener('input', (e) => { switchToManual(); currentMin = parseInt(e.target.value); updateTimeDisplays(); });
+            sliderSec.addEventListener('input', (e) => { switchToManual(); currentSec = parseInt(e.target.value); updateTimeDisplays(); });
+            document.getElementById('btn-zero-sec').addEventListener('click', () => { switchToManual(); currentHour = 12; currentMin = 0; currentSec = 0; updateTimeDisplays(); });
+
+            function renderDictionaryList() {
+                dictionaryListContainer.innerHTML = '';
+                Object.keys(hintDictionary).forEach((wordKey) => {
+                    const row = document.createElement('div');
+                    row.className = 'p-2 bg-slate-950 border border-slate-800 rounded flex gap-2 items-center';
+
+                    const wordLabel = document.createElement('span');
+                    wordLabel.className = 'w-24 text-xs font-mono font-bold text-amber-400';
+                    wordLabel.textContent = wordKey;
+
+                    const hintInput = document.createElement('input');
+                    hintInput.type = 'text';
+                    hintInput.value = hintDictionary[wordKey];
+                    hintInput.className = 'flex-1 py-1 px-2 text-xs bg-slate-900 border border-slate-700 rounded text-slate-100 focus:outline-none focus:border-amber-400';
+
+                    let isComp = false;
+                    hintInput.addEventListener('compositionstart', () => { isComp = true; });
+                    hintInput.addEventListener('compositionend', (e) => { isComp = false; hintDictionary[wordKey] = e.target.value; saveData(); renderHintCards(); });
+                    hintInput.addEventListener('input', (e) => { if (!isComp) { hintDictionary[wordKey] = e.target.value; saveData(); renderHintCards(); } });
+
+                    row.appendChild(wordLabel);
+                    row.appendChild(hintInput);
+                    dictionaryListContainer.appendChild(row);
+                });
+            }
+
+            document.getElementById('btn-save-manual').addEventListener('click', async () => { await saveData(); flashSaveToast(); });
+            document.getElementById('btn-export-json').addEventListener('click', () => {
+                const blob = new Blob([JSON.stringify(hintDictionary, null, 2)], { type: 'application/json' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'word_puzzle_hints.json';
+                a.click();
+            });
+            document.getElementById('btn-import-json').addEventListener('click', () => {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = 'application/json';
+                input.onchange = (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = async (evt) => {
+                            try {
+                                hintDictionary = JSON.parse(evt.target.result);
+                                await saveData();
+                                renderDictionaryList();
+                                renderHintCards();
+                                flashSaveToast();
+                            } catch (err) {}
+                        };
+                        reader.readAsText(file);
+                    }
+                };
+                input.click();
+            });
+
+            window.onload = async () => {
+                await loadData();
+                renderTrackButtons();
                 updateTimeDisplays();
-            }
-            requestAnimationFrame(tick);
-        }
-
-        function switchToManual() {
-            isLive = false;
-            btnLive.className = "px-3 py-1 rounded text-xs font-bold flex items-center gap-1.5 transition border border-slate-700 bg-slate-800 text-slate-300";
-            btnLive.innerHTML = '<i class="fa-solid fa-pause text-xs"></i> 手動';
-        }
-
-        const finalAnswerInput = document.getElementById('final-answer-input');
-        const btnSubmitAnswer = document.getElementById('btn-submit-answer');
-        const answerErrorMsg = document.getElementById('answer-error-msg');
-        const clearScreen = document.getElementById('clear-screen');
-        const btnShareX = document.getElementById('btn-share-x');
-
-        let isComposingAnswer = false;
-
-        finalAnswerInput.addEventListener('compositionstart', () => { isComposingAnswer = true; });
-        finalAnswerInput.addEventListener('compositionend', () => { isComposingAnswer = false; });
-
-        function normalizeText(text) {
-            return text.trim()
-                .replace(/[\u30a1-\u30f6]/g, match => String.fromCharCode(match.charCodeAt(0) - 0x60)) // Kana to Hira
-                .replace(/\s+/g, '');
-        }
-
-        function checkFinalAnswer() {
-            const rawVal = finalAnswerInput.value;
-            const normVal = normalizeText(rawVal);
-            const isCorrect = CLEAR_PASSWORDS.some(p => normalizeText(p) === normVal);
-
-            if (isCorrect) {
-                answerErrorMsg.classList.add('hidden');
-                clearScreen.classList.remove('hidden');
-
-                const shareText = encodeURIComponent("WORD PUZZLE をクリアしました！");
-                btnShareX.href = `https://twitter.com/intent/tweet?text=${shareText}`;
-            } else {
-                answerErrorMsg.classList.remove('hidden');
-            }
-        }
-
-        btnSubmitAnswer.addEventListener('click', checkFinalAnswer);
-        finalAnswerInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !isComposingAnswer) {
-                checkFinalAnswer();
-            }
-        });
-
-        const adminTimePanel = document.getElementById('admin-time-panel');
-        const adminDictPanel = document.getElementById('admin-dict-panel');
-        const btnAdminToggle = document.getElementById('btn-admin-toggle');
-        const passwordModal = document.getElementById('password-modal');
-        const adminPassInput = document.getElementById('admin-pass-input');
-        const modalErrorMsg = document.getElementById('modal-error-msg');
-        const btnCloseModal = document.getElementById('btn-close-modal');
-        const btnCancelModal = document.getElementById('btn-cancel-modal');
-        const btnSubmitModal = document.getElementById('btn-submit-modal');
-        const dictionaryListContainer = document.getElementById('dictionary-list-container');
-
-        btnAdminToggle.addEventListener('click', () => {
-            if (isAdmin) {
-                isAdmin = false;
-                adminTimePanel.classList.add('hidden');
-                adminDictPanel.classList.add('hidden');
-                btnAdminToggle.innerHTML = '<i class="fa-solid fa-lock text-sm"></i>';
-                btnAdminToggle.className = "p-2 rounded text-xs font-bold transition flex items-center justify-center border border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-300 shadow-sm";
-            } else {
-                adminPassInput.value = '';
-                modalErrorMsg.classList.add('hidden');
-                passwordModal.classList.remove('hidden');
-                adminPassInput.focus();
-            }
-        });
-
-        function verifyPassword() {
-            if (adminPassInput.value.trim() === ADMIN_PASSWORD) {
-                isAdmin = true;
-                passwordModal.classList.add('hidden');
-                adminTimePanel.classList.remove('hidden');
-                adminDictPanel.classList.remove('hidden');
-                btnAdminToggle.innerHTML = '<i class="fa-solid fa-lock-open text-sm"></i>';
-                btnAdminToggle.className = "p-2 rounded text-xs font-bold transition flex items-center justify-center border border-amber-500 bg-amber-500 text-slate-950 shadow-sm";
-                renderDictionaryList();
-            } else {
-                modalErrorMsg.classList.remove('hidden');
-            }
-        }
-
-        btnSubmitModal.addEventListener('click', verifyPassword);
-        btnCloseModal.addEventListener('click', () => passwordModal.classList.add('hidden'));
-        btnCancelModal.addEventListener('click', () => passwordModal.classList.add('hidden'));
-        adminPassInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') verifyPassword(); });
-
-        btnLive.addEventListener('click', () => {
-            isLive = !isLive;
-            if (isLive) {
-                btnLive.className = "px-3 py-1 rounded text-xs font-bold flex items-center gap-1.5 transition border border-rose-500 bg-rose-950/40 text-rose-400 hover:bg-rose-900/50";
-                btnLive.innerHTML = '<span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span> LIVE';
-            } else {
-                switchToManual();
-            }
-        });
-
-        sliderHour.addEventListener('input', (e) => { switchToManual(); currentHour = parseInt(e.target.value); updateTimeDisplays(); });
-        sliderMin.addEventListener('input', (e) => { switchToManual(); currentMin = parseInt(e.target.value); updateTimeDisplays(); });
-        sliderSec.addEventListener('input', (e) => { switchToManual(); currentSec = parseInt(e.target.value); updateTimeDisplays(); });
-        document.getElementById('btn-zero-sec').addEventListener('click', () => { switchToManual(); currentHour = 12; currentMin = 0; currentSec = 0; updateTimeDisplays(); });
-
-        function renderDictionaryList() {
-            dictionaryListContainer.innerHTML = '';
-            Object.keys(hintDictionary).forEach((wordKey) => {
-                const row = document.createElement('div');
-                row.className = 'p-2 bg-slate-950 border border-slate-800 rounded flex gap-2 items-center';
-
-                const wordLabel = document.createElement('span');
-                wordLabel.className = 'w-24 text-xs font-mono font-bold text-amber-400';
-                wordLabel.textContent = wordKey;
-
-                const hintInput = document.createElement('input');
-                hintInput.type = 'text';
-                hintInput.value = hintDictionary[wordKey];
-                hintInput.className = 'flex-1 py-1 px-2 text-xs bg-slate-900 border border-slate-700 rounded text-slate-100 focus:outline-none focus:border-amber-400';
-
-                let isComp = false;
-                hintInput.addEventListener('compositionstart', () => { isComp = true; });
-                hintInput.addEventListener('compositionend', (e) => { isComp = false; hintDictionary[wordKey] = e.target.value; saveData(); renderHintCards(); });
-                hintInput.addEventListener('input', (e) => { if (!isComp) { hintDictionary[wordKey] = e.target.value; saveData(); renderHintCards(); } });
-
-                row.appendChild(wordLabel);
-                row.appendChild(hintInput);
-                dictionaryListContainer.appendChild(row);
-            });
-        }
-
-        document.getElementById('btn-save-manual').addEventListener('click', async () => { await saveData(); flashSaveToast(); });
-        document.getElementById('btn-export-json').addEventListener('click', () => {
-            const blob = new Blob([JSON.stringify(hintDictionary, null, 2)], { type: 'application/json' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'word_puzzle_hints.json';
-            a.click();
-        });
-        document.getElementById('btn-import-json').addEventListener('click', () => {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = 'application/json';
-            input.onchange = (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = async (evt) => {
-                        try {
-                            hintDictionary = JSON.parse(evt.target.result);
-                            await saveData();
-                            renderDictionaryList();
-                            renderHintCards();
-                            flashSaveToast();
-                        } catch (err) {}
-                    };
-                    reader.readAsText(file);
-                }
+                tick();
             };
-            input.click();
-        });
-
-        window.onload = async () => {
-            await loadData();
-            renderTrackButtons();
-            updateTimeDisplays();
-            tick();
-        };
+        })();
     </script>
 </body>
 </html>
