@@ -202,7 +202,6 @@
 
     <script>
         (function() {
-            // Irreversible SHA-256 Hash of normalized answer/password ("あざみのはなもひとさかり")
             const TARGET_HASH = "8a2f3a61c33fbbbe280dcb807a01d67bcffc6961cfb36e0d37e583c4bd3fbf11";
             const STORAGE_KEY_HINTS = 'word_puzzle_hints_v1';
             const DB_NAME = 'WordPuzzleDB_v1';
@@ -210,9 +209,15 @@
 
             let isAdmin = false;
 
-            // Decryption utility
             function _d(b64) {
                 return decodeURIComponent(atob(b64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
+            }
+
+            // 文字列を全角カタカナに標準化する関数
+            function normalizeKatakana(str) {
+                if (!str) return '';
+                return str.normalize('NFKC')
+                          .replace(/[\u3041-\u3096]/g, m => String.fromCharCode(m.charCodeAt(0) + 0x60));
             }
 
             const DEFAULT_GRID_WORDS = [
@@ -243,7 +248,12 @@
                 "リキセツ": "熱弁", "リンコウ": "発光現象", "リキガク": "量子ー、ニュートンー", "リキセン": "磁場や電場で向きを指す"
             };
 
-            let hintDictionary = { ...DEFAULT_HINT_DICTIONARY };
+            let hintDictionary = {};
+            // 辞書のキーを正規化して格納
+            Object.keys(DEFAULT_HINT_DICTIONARY).forEach(key => {
+                hintDictionary[normalizeKatakana(key)] = DEFAULT_HINT_DICTIONARY[key];
+            });
+
             let gridData = JSON.parse(JSON.stringify(DEFAULT_GRID_WORDS));
             let selectedTracks = [1, 2, 3];
 
@@ -298,7 +308,10 @@
                         const hintsReq = tx.objectStore(DB_STORE).get(STORAGE_KEY_HINTS);
                         await new Promise((res) => { tx.oncomplete = () => res(); tx.onerror = () => res(); });
                         if (hintsReq.result && typeof hintsReq.result === 'object') {
-                            hintDictionary = hintsReq.result;
+                            const loadedDict = hintsReq.result;
+                            Object.keys(loadedDict).forEach(k => {
+                                hintDictionary[normalizeKatakana(k)] = loadedDict[k];
+                            });
                             loaded = true;
                         }
                     } catch (e) {}
@@ -306,7 +319,12 @@
                 if (!loaded) {
                     try {
                         const saved = localStorage.getItem(STORAGE_KEY_HINTS);
-                        if (saved) hintDictionary = JSON.parse(saved);
+                        if (saved) {
+                            const loadedDict = JSON.parse(saved);
+                            Object.keys(loadedDict).forEach(k => {
+                                hintDictionary[normalizeKatakana(k)] = loadedDict[k];
+                            });
+                        }
                     } catch (e) {}
                 }
             }
@@ -357,7 +375,6 @@
                 const isNearHour = angularDiffDeg(hourDeg, posDeg) < 8;
                 const isNearMin = angularDiffDeg(minDeg, posDeg) < 8;
 
-                // 秒針に関しては「遷移中（？？？）」判定を適用せず、すぐに文字を決定させる
                 const isTrackInTransition = (isNearHour && alignedHourIdx === -1) ||
                                            (isNearMin && alignedMinIdx === -1);
 
@@ -400,6 +417,11 @@
                 selectionCounter.textContent = `${selectedTracks.length} / 3`;
             }
 
+            function getHintForWord(word) {
+                const normWord = normalizeKatakana(word);
+                return hintDictionary[normWord] || null;
+            }
+
             function renderHintCards() {
                 hintCardsContainer.innerHTML = '';
 
@@ -416,7 +438,7 @@
                     const computed = computeTrackWord(hourNum);
                     const word = computed.word;
                     const inTransition = computed.inTransition;
-                    const hintText = hintDictionary[word] || null;
+                    const hintText = getHintForWord(word);
 
                     const card = document.createElement('div');
                     card.className = 'bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-sm flex flex-col justify-between gap-3';
@@ -499,9 +521,7 @@
             finalAnswerInput.addEventListener('compositionend', () => { isComposingAnswer = false; });
 
             function normalizeText(text) {
-                return text.trim()
-                    .replace(/[\u30a1-\u30f6]/g, match => String.fromCharCode(match.charCodeAt(0) - 0x60))
-                    .replace(/\s+/g, '');
+                return normalizeKatakana(text.trim()).replace(/\s+/g, '');
             }
 
             async function _hash(text) {
@@ -640,7 +660,11 @@
                         const reader = new FileReader();
                         reader.onload = async (evt) => {
                             try {
-                                hintDictionary = JSON.parse(evt.target.result);
+                                const imported = JSON.parse(evt.target.result);
+                                hintDictionary = {};
+                                Object.keys(imported).forEach(k => {
+                                    hintDictionary[normalizeKatakana(k)] = imported[k];
+                                });
                                 await saveData();
                                 renderDictionaryList();
                                 renderHintCards();
