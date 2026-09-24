@@ -278,7 +278,7 @@
             let currentMin = 0;
             let currentSec = 0;
 
-            const ALIGNMENT_THRESHOLD_DEG = 15.0;
+            const ALIGNMENT_THRESHOLD_DEG = 12.0;
             const ORDERED_HOURS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 
             function hourToIdx(h) { return h === 12 ? 0 : h; }
@@ -380,9 +380,9 @@
                 }
 
                 const posDeg = pos * 30;
-                const isNearHour = angularDiffDeg(hourDeg, posDeg) < 15;
-                const isNearMin = angularDiffDeg(minDeg, posDeg) < 15;
-                const isNearSec = angularDiffDeg(secDeg, posDeg) < 15;
+                const isNearHour = angularDiffDeg(hourDeg, posDeg) < 8;
+                const isNearMin = angularDiffDeg(minDeg, posDeg) < 8;
+                const isNearSec = angularDiffDeg(secDeg, posDeg) < 8;
 
                 const isTrackInTransition = (isNearHour && alignedHourIdx === -1) ||
                                            (isNearMin && alignedMinIdx === -1) ||
