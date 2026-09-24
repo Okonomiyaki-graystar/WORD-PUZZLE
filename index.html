@@ -215,16 +215,6 @@
                 return decodeURIComponent(atob(b64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
             }
 
-            // Obfuscated grid data
-            const _eGrid = [
-                ["44Oq","44Kt","44K9","44OD"],["44Ki","44Kq","44K/","44K3"],
-                ["44K2","44OD","44Kt","44Oo"],["44Of","44Oz","44K3","44Om"],
-                ["44O*","44Om","44Of","44K9"],["44OP","44Oz","44Oa","44Kk"],
-                ["44iq","44Oz","44Oa","44Kk"],["44Otbw==","44Oz","44K9","44OD"],
-                ["44Oヒ","44Kr","44Kr","44Kv"],["44O3","44Kv","44OG","44Kk"],
-                ["44K1","44Oz","44K2","44O1"],["44Kr","44Oz","44K9","44OD"]
-            ];
-
             const DEFAULT_GRID_WORDS = [
                 ["リ", "キ", "セ", "ツ"], ["ア", "オ", "タ", "ケ"],
                 ["ザ", "ツ", "キ", "ヨ"], ["ミ", "ン", "シ", "ユ"],
@@ -237,22 +227,6 @@
             const handSecText = _d("44Om44K944Oz"); // ウコン
             const handMinText = _d("44Kv44Ks");     // クガ
             const handHourText = _d("44Oz");         // ン
-
-            // Encrypted 48 Hints
-            const _eDict = {
-                "44Ki44Kq44K/44K3": "6LmA44KA", "44Ki44Oz44Kq44Om": "o44Gh44KH44GG44Gh44O/", "44Ki44Kq44Ks44Kv": "ppSW44GuMygyKeahpeeBruOBq+aCpOOBmeOCiw==", "44Ki44Kq44K944Oz": "NeeCueOCkw==",
-                "44K244OD44Kt44Oo": "44O244Or", "44K244Oz44Kq44Om": "ppWX44GE44GI", "44K244OD44Ks44Kv": "p44Gf44Go44GI44Gw44CB44OQ44Op44Oz44KE44Op44Oz44OB44Oa44O844Og", "44K244OD44Kt44Oz": "o44Gf44KK6L6844Gk44Go44Gf44Ga44GE",
-                "44Of44Oz44K344Om": "44Oa44KD44GE", "44Of44Oz44Kq44Om": "44C944GLLyOCs+OBjOOBjOOBpOOCgOOBhuOBp+OBhg==", "44Of44Oz44Ks44Kv": "o44Gf44Go44GG44GuIOS4gOOCow==", "44Of44Oz44K344Oz": "44Oq44O244Op44OrIOaUv+WFmg==",
-                "44O*44Om44Of44K9": "44Gf44KK44Gq44GE", "44O*44Oz44Kq44Om": "44GG44Gf44GE44Ga", "44O*44Om44Ks44Kv": "44OB44KD44GGIOS4gOOCow==", "44O*44Om44Of44Oz": "44Gf44KK44Gq44GEIOS4gOOCow==",
-                "44OP44Oz44Oa44Kk": "44Gf44Gq44GE", "44OP44Oz44Kq44Om": "44Gl44GN", "44OP44Oz44Ks44Kv": "NeaJspqE", "44OP44Oz44Of44Oz": "44GI44Gq44GEIOS4gOOCow==",
-                "44iq44Oz44Oa44Kk": "44Gh44KK", "44iq44Oz44Kq44Om": "44Gq44Gq44GE", "44iq44Oz44Ks44Kv": "pqE44Gl44GN", "44iq44Oz44Oa44Oz": "44GE44GP44Gl44Go",
-                "44Otbw==44Oz44K944OD": "44GN44Oq44GX44GE", "44Otbw==44Oz44Kq44Om": "p44Gf44G3IOC4gOOCow==", "44Otbw==44Oz44Ks44Kv": "o44Gf44Go44GG44GuIOS4gOOCow==", "44Otbw==44Oz44Oa44Oz": "44Gl44GN44Gf44GE",
-                "44Oヒ44Kr44Kr44Kv": "p44Gf44Go44GG", "44OE44Oz44Kq44Om": "44Gf44G3IOC4gOOCow==", "44Oヒ44Kr44Ks44Kv": "o44Gf44Go44GG44GuIOS4gOOCow==", "44Oヒ44Kr44Ks44Oz": "44Gl44GN44Gf44GE",
-                "44O344Kv44OG44Kk": "44Gl44GN44Gf44GE", "44O344Oz44Kq44Om": "44Gf44G3IOC4gOOCow==", "44O344Kv44Ks44Kv": "o44Gf44Go44GG44GuIOS4gOOCow==", "44O344Kv44OG44Oz": "44Gl44GN44Gf44GE",
-                "44K144Oz44K244O1": "44Gf44G3IOC4gOOCow==", "44K144Oz44Kq44Om": "44Gf44G3IOC4gOOCow==", "44K144Oz44Ks44Kv": "o44Gf44Go44GG44GuIOS4gOOCow==", "44K144Oz44K244Oz": "44Gl44GN44Gf44GE",
-                "44Kr44Oz44K944OD": "44Gf44G3IOC4gOOCow==", "44Kr44Oz44Kq44Om": "44Gf44G3IOC4gOOCow==", "44Kr44Oz44Ks44Kv": "o44Gf44Go44GG44GuIOS4gOOCow==", "44Kr44Oz44K944Oz": "44Gl44GN44Gf44GE",
-                "44Oq44Kt44K944OD": "44Gf44G3IOC4gOOCow==", "44Oq44Oz44Kq44Om": "44Gf44G3IOC4gOOCow==", "44Oq44Kt44Ks44Kv": "o44Gf44Go44GG44GuIOS4gOOCow==", "44Oq44Kt44K944Oz": "44Gl44GN44Gf44GE"
-            };
 
             const DEFAULT_HINT_DICTIONARY = {
                 "アオタケ": "踏む", "アンコウ": "提灯", "アオガク": "群の3(2)番目に属する", "アオタン": "5点",
@@ -382,11 +356,10 @@
                 const posDeg = pos * 30;
                 const isNearHour = angularDiffDeg(hourDeg, posDeg) < 8;
                 const isNearMin = angularDiffDeg(minDeg, posDeg) < 8;
-                const isNearSec = angularDiffDeg(secDeg, posDeg) < 8;
 
+                // 秒針に関しては「遷移中（？？？）」判定を適用せず、すぐに文字を決定させる
                 const isTrackInTransition = (isNearHour && alignedHourIdx === -1) ||
-                                           (isNearMin && alignedMinIdx === -1) ||
-                                           (isNearSec && alignedSecIdx === -1);
+                                           (isNearMin && alignedMinIdx === -1);
 
                 return {
                     word: currentTrackChars.join(''),
@@ -527,7 +500,7 @@
 
             function normalizeText(text) {
                 return text.trim()
-                    .replace(/[\u30a1-\u30f6]/g, match => String.fromCharCode(match.charCodeAt(0) - 0x60)) // Kana to Hira
+                    .replace(/[\u30a1-\u30f6]/g, match => String.fromCharCode(match.charCodeAt(0) - 0x60))
                     .replace(/\s+/g, '');
             }
 
