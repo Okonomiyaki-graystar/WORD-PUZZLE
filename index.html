@@ -203,8 +203,9 @@
     <script>
         (function() {
             const TARGET_HASH = "8a2f3a61c33fbbbe280dcb807a01d67bcffc6961cfb36e0d37e583c4bd3fbf11";
-            const STORAGE_KEY_HINTS = 'word_puzzle_hints_v1';
-            const DB_NAME = 'WordPuzzleDB_v1';
+            // 保存キーを更新して古いブラウザキャッシュ（誤っていたデータ）を無視するように変更
+            const STORAGE_KEY_HINTS = 'word_puzzle_hints_v2';
+            const DB_NAME = 'WordPuzzleDB_v2';
             const DB_STORE = 'puzzleData';
 
             let isAdmin = false;
@@ -249,7 +250,6 @@
             };
 
             let hintDictionary = {};
-            // 辞書のキーを正規化して格納
             Object.keys(DEFAULT_HINT_DICTIONARY).forEach(key => {
                 hintDictionary[normalizeKatakana(key)] = DEFAULT_HINT_DICTIONARY[key];
             });
