@@ -203,36 +203,33 @@
     <script>
         (function() {
             const TARGET_HASH = "8a2f3a61c33fbbbe280dcb807a01d67bcffc6961cfb36e0d37e583c4bd3fbf11";
-            // 保存キーを更新して古いブラウザキャッシュ（誤っていたデータ）を無視するように変更
-            const STORAGE_KEY_HINTS = 'word_puzzle_hints_v2';
-            const DB_NAME = 'WordPuzzleDB_v2';
+            const STORAGE_KEY_HINTS = 'word_puzzle_hints_v3';
+            const DB_NAME = 'WordPuzzleDB_v3';
             const DB_STORE = 'puzzleData';
 
             let isAdmin = false;
 
-            function _d(b64) {
-                return decodeURIComponent(atob(b64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join(''));
-            }
-
-            // 文字列を全角カタカナに標準化する関数
             function normalizeKatakana(str) {
                 if (!str) return '';
                 return str.normalize('NFKC')
                           .replace(/[\u3041-\u3096]/g, m => String.fromCharCode(m.charCodeAt(0) + 0x60));
             }
 
+            // ベース盤面文字
             const DEFAULT_GRID_WORDS = [
-                ["リ", "キ", "セ", "ツ"], ["ア", "オ", "タ", "ケ"],
-                ["ザ", "ツ", "キ", "ヨ"], ["ミ", "ン", "シ", "ユ"],
-                ["ノ", "ウ", "ミ", "ソ"], ["ハ", "ン", "メ", "イ"],
-                ["ナ", "ン", "ベ", "イ"], ["モ", "ン", "ゼ", "ツ"],
-                ["ヒ", "カ", "カ", "ク"], ["ト", "ク", "テ", "イ"],
-                ["サ", "ン", "ザ", "ル"], ["カ", "ン", "セ", "ツ"]
+                ["カ", "ン", "セ", "ツ"], // 12時位置 (カンコウ のベース)
+                ["リ", "キ", "セ", "ツ"], // 1時位置  (リンコウ のベース)
+                ["ア", "オ", "タ", "ケ"], // 2時位置  (アンコウ のベース)
+                ["ザ", "ツ", "キ", "ヨ"], // 3時位置  (ザンコウ のベース)
+                ["ミ", "ン", "シ", "ユ"], // 4時位置  (ミンコウ のベース)
+                ["ノ", "ウ", "ミ", "ソ"], // 5時位置  (ノンコウ のベース)
+                ["ハ", "ン", "メ", "イ"], // 6時位置  (ハンコウ のベース)
+                ["ナ", "ン", "ベ", "イ"], // 7時位置  (ナンコウ のベース)
+                ["モ", "ン", "ゼ", "ツ"], // 8時位置  (モンコウ のベース)
+                ["ヒ", "カ", "カ", "ク"], // 9時位置  (ヒンコウ のベース)
+                ["ト", "ク", "テ", "イ"], // 10時位置 (トンコウ のベース)
+                ["サ", "ン", "ザ", "ル"]  // 11時位置 (サンコウ のベース)
             ];
-
-            const handSecText = _d("44Om44K944Oz"); // ウコン
-            const handMinText = _d("44Kv44Ks");     // クガ
-            const handHourText = _d("44Oz");         // ン
 
             const DEFAULT_HINT_DICTIONARY = {
                 "アオタケ": "踏む", "アンコウ": "提灯", "アオガク": "群の3(2)番目に属する", "アオタン": "5点",
@@ -358,17 +355,20 @@
 
                 let currentTrackChars = [...gridData[pos]];
 
+                // 時針重なり：4文字目を置換
                 if (alignedHourIdx === pos) {
-                    currentTrackChars[3] = handHourText[0] || currentTrackChars[3];
+                    currentTrackChars[3] = "ン";
                 }
+                // 分針重なり：3〜4文字目を置換
                 if (alignedMinIdx === pos) {
-                    currentTrackChars[3] = handMinText[0] || currentTrackChars[3];
-                    currentTrackChars[2] = handMinText[1] || currentTrackChars[2];
+                    currentTrackChars[2] = "ガ";
+                    currentTrackChars[3] = "ク";
                 }
+                // 秒針重なり：2〜4文字目を「ン・コ・ウ」に置換し「〇ンコウ」を形成
                 if (alignedSecIdx === pos) {
-                    currentTrackChars[3] = handSecText[0] || currentTrackChars[3];
-                    currentTrackChars[2] = handSecText[1] || currentTrackChars[2];
-                    currentTrackChars[1] = handSecText[2] || currentTrackChars[1];
+                    currentTrackChars[1] = "ン";
+                    currentTrackChars[2] = "コ";
+                    currentTrackChars[3] = "ウ";
                 }
 
                 const posDeg = pos * 30;
